@@ -5,6 +5,8 @@ import { useAzureCommunicationChatAdapter } from '@azure/communication-react'
 
 export const BOT_PREFIX = '[Bot]'
 export const BOT_NAME = 'Coach MESH'
+export const BACKEND_STREAM_URL =
+  process.env.NEXT_PUBLIC_CHAT_STREAM_URL || 'https://gf-mesh-backend-production.up.railway.app/chat/stream'
 
 type ChatAdapter = ReturnType<typeof useAzureCommunicationChatAdapter>
 
@@ -18,6 +20,23 @@ export function useWelcomeMessage(chatAdapter: ChatAdapter, welcomedRef: Mutable
       `${BOT_PREFIX} Hi there! I'm ${BOT_NAME}—here to keep your money habits on track. Tell me what you're working on today or ask me anything.`
     )
   }, [chatAdapter, welcomedRef])
+}
+
+export function useBotStreaming(chatAdapter: ChatAdapter) {
+  useEffect(() => {
+    if (!chatAdapter) return
+
+    const handler = (event: unknown) => {
+      const content = extractMessageContent(event)
+      if (!content || content.startsWith(BOT_PREFIX)) return
+      streamBackendAndPostReply(chatAdapter, content)
+    }
+
+    chatAdapter.on('messageSent', handler)
+    return () => {
+      chatAdapter.off('messageSent', handler)
+    }
+  }, [chatAdapter])
 }
 
 export function useReadReceipts(chatAdapter: ChatAdapter, currentUserId: string) {
@@ -115,4 +134,107 @@ function getMessageContent(message: unknown): string | null {
   if (!content || typeof content !== 'object') return null
   const text = (content as { message?: unknown }).message
   return typeof text === 'string' ? text : null
+}
+
+function extractMessageContent(event: unknown): string | null {
+  if (!event || typeof event !== 'object') return null
+  const message = (event as { message?: unknown }).message
+  if (message && typeof message === 'object') {
+    const content = (message as { content?: unknown }).content
+    if (content && typeof content === 'object') {
+      const msg = (content as { message?: unknown }).message
+      const plainText = (content as { plainText?: unknown }).plainText
+      if (typeof msg === 'string') return msg
+      if (typeof plainText === 'string') return plainText
+    }
+  }
+  return null
+}
+
+async function streamBackendAndPostReply(
+  chatAdapter: NonNullable<ReturnType<typeof useAzureCommunicationChatAdapter>>,
+  userContent: string
+) {
+  try {
+    const res = await fetch(BACKEND_STREAM_URL, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        input: {
+          content: userContent,
+          additionalProp1: {}
+        },
+        config: {},
+        kwargs: {
+          additionalProp1: {}
+        }
+      })
+    })
+
+    if (!res.ok || !res.body) {
+      throw new Error(`Backend responded with ${res.status}`)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let assembled = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split(/\r?\n/)
+      buffer = lines.pop() ?? ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue
+        const data = line.slice(5).trim()
+        if (!data) continue
+
+        const chunk = parseStreamChunk(data)
+        if (!chunk) continue
+        assembled += chunk
+      }
+    }
+
+    if (assembled.trim().length) {
+      await chatAdapter.sendMessage(`${BOT_PREFIX} ${assembled}`)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error'
+    await chatAdapter.sendMessage(`${BOT_PREFIX} (stream error) ${message}`)
+  }
+}
+
+function parseStreamChunk(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith('data:metadata')) return null
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (typeof parsed === 'string') {
+      if (parsed.startsWith('data:metadata')) return null
+      return parsed
+    }
+    if (parsed && typeof parsed === 'object') {
+      // Skip metadata-like envelopes.
+      if ('run_id' in (parsed as Record<string, unknown>)) return null
+      const maybeContent = (parsed as { content?: unknown }).content
+      const maybeText = (parsed as { text?: unknown }).text
+      if (typeof maybeContent === 'string') return maybeContent
+      if (typeof maybeText === 'string') return maybeText
+      return null
+    }
+  } catch {
+    // not JSON, fall through
+  }
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return null
+  return trimmed
 }

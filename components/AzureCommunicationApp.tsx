@@ -8,6 +8,7 @@ import { CSSProperties, useMemo, useRef } from 'react'
 import type { AzureChatConfig } from '@/lib/azureCommunication'
 import {
   renderBotOnLeft,
+  useBotStreaming,
   useReadReceipts,
   useTypingIndicator,
   useWelcomeMessage
@@ -46,6 +47,7 @@ export default function AzureCommunicationApp({ config }: AzureCommunicationAppP
   )
   const chatAdapter = useAzureCommunicationChatAdapter(chatAdapterArgs)
 
+  useBotStreaming(chatAdapter)
   useReadReceipts(chatAdapter, userId)
   useTypingIndicator(chatAdapter)
   useWelcomeMessage(chatAdapter, welcomedRef)
