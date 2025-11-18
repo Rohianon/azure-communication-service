@@ -1,32 +1,28 @@
 "use client"
 
-import { ChatClient } from '@azure/communication-chat'
-import { AzureCommunicationTokenCredential } from '@azure/communication-common'
-
 import type { CommunicationUserIdentifier } from '@azure/communication-common'
-import {
-  ChatComposite,
-  fromFlatCommunicationIdentifier,
-  useAzureCommunicationCallAdapter,
-  useAzureCommunicationChatAdapter
-} from '@azure/communication-react'
+import { AzureCommunicationTokenCredential } from '@azure/communication-common'
+import { ChatComposite, fromFlatCommunicationIdentifier, useAzureCommunicationChatAdapter } from '@azure/communication-react'
 import { initializeIcons } from '@fluentui/react'
-import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
-import { v4 as uuidv4 } from 'uuid'
+import { CSSProperties, useEffect, useMemo, useRef, type ComponentProps, type MutableRefObject } from 'react'
 
+import type { AzureChatConfig } from '@/lib/azureCommunication'
 
-const ENDPOINT_URL = "https://rohicommunicationservice.africa.communication.azure.com/"
-const USER_ID = "8:acs:a46d38be-853b-45c8-a689-46e0cf9713e4_0000002b-314d-08dd-d214-4c3a0d00f601"
-const TOKEN = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjAxOUQzMTYyMzQ0RTQ4REEwNUU1OUQxMzYwNkYwQkFDRjU4QTQwRUMiLCJ4NXQiOiJBWjB4WWpST1NOb0Y1WjBUWUc4THJQV0tRT3ciLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmE0NmQzOGJlLTg1M2ItNDVjOC1hNjg5LTQ2ZTBjZjk3MTNlNF8wMDAwMDAyYi0zMTRkLTA4ZGQtZDIxNC00YzNhMGQwMGY2MDEiLCJzY3AiOjE3OTIsImNzaSI6IjE3NjMzNzYzMjUiLCJleHAiOjE3NjM0NjI3MjUsInJnbiI6InphIiwiYWNzU2NvcGUiOiJjaGF0LHZvaXAiLCJyZXNvdXJjZUlkIjoiYTQ2ZDM4YmUtODUzYi00NWM4LWE2ODktNDZlMGNmOTcxM2U0IiwicmVzb3VyY2VMb2NhdGlvbiI6ImFmcmljYSIsImlhdCI6MTc2MzM3NjMyNX0.HrOkS_o48aB6aL0KcjxzqRUyXrz-NF4Fd9SQjqsoPYi2BLYw9Y0jk1Fi1ZLrKxXUCSFwbmvP7KXAe8gOw-aQIaCo1qj_Y-I6W23YJJRE9MVt80vzPr-b-jq5brFzWuvTw03GCbVBhQvYezwnGNhutboxkvEKc9aJ8zpEccfIF_vmgm5Ju9mJqRIuOmQ6jovsiVORFHtckpy9ESA74yRTcHlJ1p0PgPbOYwEGPpEmBR6P71XbFdDqaeewY_nj6B13hJEOfsM6LwCgYZA6QZGKAlCqL2aTpqCw7cMMTdV6cNWo9xw4cijRxGk8y-t0UBOS7wDgKhiDFPGQkIuFhPMuGg'
-const DISPLAY_NAME = 'Rohi Anon'
+const BACKEND_STREAM_URL =
+  process.env.NEXT_PUBLIC_CHAT_STREAM_URL || 'https://gf-mesh-backend-production.up.railway.app/chat/stream'
+const BOT_PREFIX = '[Bot]'
+const BOT_NAME = 'Coach MESH'
 const richTextEditorEnabled = false
 
 initializeIcons()
 
+type AzureCommunicationAppProps = {
+  config: AzureChatConfig
+}
 
-export default function AzureCommunicationApp(): JSX.Element {
-
-  const { endpointUrl, userId, token, displayName, groupId, threadId } = useAzureCommunicationServiceArgs()
+export default function AzureCommunicationApp({ config }: AzureCommunicationAppProps): JSX.Element {
+  const { endpointUrl, userId, token, displayName, threadId } = config
+  const welcomedRef = useRef(false)
 
   const credential = useMemo(() => {
     try {
@@ -36,19 +32,6 @@ export default function AzureCommunicationApp(): JSX.Element {
       return undefined
     }
   }, [token])
-
-  const callAdapterArgs = useMemo(
-    () => ({
-      userId: fromFlatCommunicationIdentifier(userId) as CommunicationUserIdentifier,
-      displayName,
-      credential,
-      locator: {
-        groupId
-      }
-    }),
-    [userId, credential, displayName, groupId]
-  )
-  const callAdapter = useAzureCommunicationCallAdapter(callAdapterArgs)
 
   const chatAdapterArgs = useMemo(
     () => ({
@@ -62,19 +45,30 @@ export default function AzureCommunicationApp(): JSX.Element {
   )
   const chatAdapter = useAzureCommunicationChatAdapter(chatAdapterArgs)
 
-  if (!!callAdapter && !!chatAdapter) {
-    return (
-      <div style={{ height: '100vh', display: 'flex' }}>
-        <div style={containerStyle}>
-          <ChatComposite adapter={chatAdapter} options={{ richTextEditor: richTextEditorEnabled }} />
-        </div>
-      </div>
-    )
+  useBotStreaming(chatAdapter)
+  useWelcomeMessage(chatAdapter, welcomedRef)
+
+  if (!threadId) {
+    return <h3>Chat thread is not configured.</h3>
   }
   if (credential === undefined) {
     return <h3>Failed to construct credential. Provided token is malformed.</h3>
   }
-  return <h3>Initializing...</h3>
+  if (!chatAdapter) {
+    return <h3>Initializing...</h3>
+  }
+
+  return (
+    <div style={{ height: '100vh', display: 'flex' }}>
+      <div style={containerStyle}>
+        <ChatComposite
+          adapter={chatAdapter}
+          options={{ richTextEditor: richTextEditorEnabled }}
+          onRenderMessage={renderBotOnLeft}
+        />
+      </div>
+    </div>
+  )
 }
 
 const containerStyle: CSSProperties = {
@@ -83,43 +77,174 @@ const containerStyle: CSSProperties = {
   width: '100vw'
 }
 
-function useAzureCommunicationServiceArgs(): {
-  endpointUrl: string
-  userId: string
-  token: string
-  displayName: string
-  groupId: string
-  threadId: string
-} {
-  const [threadId, setThreadId] = useState('')
+function useWelcomeMessage(
+  chatAdapter: ReturnType<typeof useAzureCommunicationChatAdapter>,
+  welcomedRef: MutableRefObject<boolean>
+) {
   useEffect(() => {
-    (async () => {
-      const client = new ChatClient(ENDPOINT_URL, new AzureCommunicationTokenCredential(TOKEN))
-      const { chatThread } = await client.createChatThread(
-        {
-          topic: 'Composites Quickstarts'
+    if (!chatAdapter) return
+    if (welcomedRef.current) return
+
+    welcomedRef.current = true
+    chatAdapter.sendMessage(
+      `${BOT_PREFIX} Hi there! I'm ${BOT_NAME}—here to keep your money habits on track. Tell me what you're working on today or ask me anything.`
+    )
+  }, [chatAdapter, welcomedRef])
+}
+
+function useBotStreaming(chatAdapter: ReturnType<typeof useAzureCommunicationChatAdapter>) {
+  useEffect(() => {
+    if (!chatAdapter) return
+
+    const handler = (event: unknown) => {
+      const content = extractMessageContent(event)
+      if (!content || content.startsWith(BOT_PREFIX)) return
+      streamBackendAndPostReply(chatAdapter, content)
+    }
+
+    chatAdapter.on('messageSent', handler)
+    return () => {
+      chatAdapter.off('messageSent', handler)
+    }
+  }, [chatAdapter])
+}
+
+function extractMessageContent(event: unknown): string | null {
+  if (!event || typeof event !== 'object') return null
+  const message = (event as { message?: unknown }).message
+  if (message && typeof message === 'object') {
+    const content = (message as { content?: unknown }).content
+    if (content && typeof content === 'object') {
+      const msg = (content as { message?: unknown }).message
+      const plainText = (content as { plainText?: unknown }).plainText
+      if (typeof msg === 'string') return msg
+      if (typeof plainText === 'string') return plainText
+    }
+  }
+  return null
+}
+
+async function streamBackendAndPostReply(
+  chatAdapter: NonNullable<ReturnType<typeof useAzureCommunicationChatAdapter>>,
+  userContent: string
+) {
+  try {
+    const res = await fetch(BACKEND_STREAM_URL, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        input: {
+          content: userContent,
+          additionalProp1: {}
         },
-        {
-          participants: [
-            {
-              id: fromFlatCommunicationIdentifier(USER_ID),
-              displayName: DISPLAY_NAME
-            }
-          ]
+        config: {},
+        kwargs: {
+          additionalProp1: {}
         }
-      )
-      setThreadId(chatThread?.id ?? '')
-    })()
-  }, [])
+      })
+    })
 
-  const groupId = useRef(uuidv4())
+    if (!res.ok || !res.body) {
+      throw new Error(`Backend responded with ${res.status}`)
+    }
 
-  return {
-    endpointUrl: ENDPOINT_URL,
-    userId: USER_ID,
-    token: TOKEN,
-    displayName: DISPLAY_NAME,
-    groupId: groupId.current,
-    threadId
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let assembled = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split(/\r?\n/)
+      buffer = lines.pop() ?? ''
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue
+        const data = line.slice(5).trim()
+        if (!data) continue
+
+        const chunk = parseStreamChunk(data)
+        if (!chunk) continue
+        assembled += chunk
+      }
+    }
+
+    if (assembled.trim().length) {
+      await chatAdapter.sendMessage(`${BOT_PREFIX} ${assembled}`)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error'
+    await chatAdapter.sendMessage(`${BOT_PREFIX} (stream error) ${message}`)
   }
 }
+
+function parseStreamChunk(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith('data:metadata')) return null
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed)
+    if (typeof parsed === 'string') {
+      if (parsed.startsWith('data:metadata')) return null
+      return parsed
+    }
+    if (parsed && typeof parsed === 'object') {
+      // Skip metadata-like envelopes.
+      if ('run_id' in (parsed as Record<string, unknown>)) return null
+      const maybeContent = (parsed as { content?: unknown }).content
+      const maybeText = (parsed as { text?: unknown }).text
+      if (typeof maybeContent === 'string') return maybeContent
+      if (typeof maybeText === 'string') return maybeText
+      return null
+    }
+  } catch {
+    // not JSON, fall through
+  }
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) return null
+  return trimmed
+}
+
+function renderBotOnLeft(
+  messageProps: Parameters<NonNullable<ComponentProps<typeof ChatComposite>['onRenderMessage']>>[0],
+  defaultOnRender?: Parameters<NonNullable<ComponentProps<typeof ChatComposite>['onRenderMessage']>>[1]
+) {
+  const content = getMessageContent(messageProps.message)
+  const startsWithBot = typeof content === 'string' && content.startsWith(BOT_PREFIX)
+  if (!startsWithBot) {
+    return defaultOnRender ? defaultOnRender(messageProps) : null
+  }
+
+  const trimmed = content.replace(/^\[Bot\]\s*/, '')
+  const originalContent = (messageProps.message as { content?: { message?: string } }).content ?? {}
+  const modifiedProps: typeof messageProps = {
+    ...messageProps,
+    message: {
+      ...messageProps.message,
+      mine: false,
+      senderDisplayName: BOT_NAME,
+      content: {
+        ...originalContent,
+        message: trimmed
+      }
+    }
+  }
+
+  return defaultOnRender ? defaultOnRender(modifiedProps) : null
+}
+
+function getMessageContent(message: unknown): string | null {
+  if (!message || typeof message !== 'object') return null
+  const content = (message as { content?: unknown }).content
+  if (!content || typeof content !== 'object') return null
+  const text = (content as { message?: unknown }).message
+  return typeof text === 'string' ? text : null
+}
+
