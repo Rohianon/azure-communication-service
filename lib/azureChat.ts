@@ -3,6 +3,8 @@ import { useEffect, type ComponentProps, type MutableRefObject } from 'react'
 import type { ChatComposite } from '@azure/communication-react'
 import { useAzureCommunicationChatAdapter } from '@azure/communication-react'
 
+import { getBotReply } from '@/lib/getBotReply'
+
 export const BOT_PREFIX = '[Bot]'
 export const BOT_NAME = 'Coach MESH'
 
@@ -77,6 +79,34 @@ export function useTypingIndicator(chatAdapter: ChatAdapter) {
     return () => {
       document.removeEventListener('input', inputListener, true)
       if (cooldown) clearTimeout(cooldown)
+    }
+  }, [chatAdapter])
+}
+
+export function useBotReplies(chatAdapter: ChatAdapter) {
+  useEffect(() => {
+    if (!chatAdapter) return
+
+    const handler = (event: { message?: unknown }) => {
+      const content = getMessageContent(event.message)
+      if (!content || content.startsWith(BOT_PREFIX)) return
+
+      getBotReply(content)
+        .then((reply) => {
+          const trimmed = typeof reply === 'string' ? reply.trim() : ''
+          if (trimmed) {
+            return chatAdapter.sendMessage(`${BOT_PREFIX} ${trimmed}`)
+          }
+          return undefined
+        })
+        .catch((error) => {
+          console.error('Failed to fetch bot reply', error)
+        })
+    }
+
+    chatAdapter.on('messageSent', handler)
+    return () => {
+      chatAdapter.off('messageSent', handler)
     }
   }, [chatAdapter])
 }

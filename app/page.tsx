@@ -1,4 +1,4 @@
-import DynamicAzureWrapper from '@/components/DynamicAzureWrapper'
+import AzureCommunicationApp from '@/components/AzureCommunicationApp'
 import { getAzureChatConfig } from '@/lib/azureCommunication'
 import type { AzureChatConfig } from '@/lib/azureCommunication'
 
@@ -16,10 +16,12 @@ export default async function Home() {
     return <div style={{ padding: '2rem' }}>Failed to initialize chat: {errorMessage}</div>
   }
 
+  console.log(chatConfig)
+
   return (
     <div style={{ fontFamily: 'sans-serif' }}>
       <main>
-        <DynamicAzureWrapper config={chatConfig} />
+        <AzureCommunicationApp config={chatConfig} />
       </main>
     </div>
   )

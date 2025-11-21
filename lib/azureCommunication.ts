@@ -16,15 +16,13 @@ export type AzureChatConfig = {
   threadId: string
 }
 
-const DEFAULT_TOPIC = 'MVP'
-const CONNECTION_STRING_ENV = 'NEXT_ACS_CONNECTION_STRING'
 
 function getDisplayName(): string {
   return process.env.NEXT_PUBLIC_ACS_DISPLAY_NAME ?? 'Coach MESH'
 }
 
 function getTopic(): string {
-  return process.env.AZURE_COMMUNICATION_TOPIC ?? DEFAULT_TOPIC
+  return process.env.AZURE_COMMUNICATION_TOPIC ?? 'MVP'
 }
 
 function extractEndpointFromConnectionString(connectionString: string): string {
@@ -44,9 +42,9 @@ function extractEndpointFromConnectionString(connectionString: string): string {
  * Mints from the ACS connection string; no legacy static token path.
  */
 export async function getAzureChatConfig(): Promise<AzureChatConfig> {
-  const connectionString = process.env[CONNECTION_STRING_ENV]
+  const connectionString = process.env['NEXT_ACS_CONNECTION_STRING']
   if (!connectionString) {
-    throw new Error(`Missing required environment variable ${CONNECTION_STRING_ENV}`)
+    throw new Error(`Missing required environment variable NEXT_ACS_CONNECTION_STRING`)
   }
   return buildConfigFromConnectionString(connectionString)
 }
@@ -57,7 +55,7 @@ async function buildConfigFromConnectionString(connectionString: string): Promis
   const displayName = getDisplayName()
 
   const user = await identityClient.createUser()
-  const { token, expiresOn } = await identityClient.getToken(user, ['chat', 'voip'])
+  const { token, expiresOn } = await identityClient.getToken(user, ['chat'])
   console.log('Minted ACS user token', { expiresOn })
 
   const chatClient = new ChatClient(endpointUrl, new AzureCommunicationTokenCredential(token))

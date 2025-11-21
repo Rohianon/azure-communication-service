@@ -6,7 +6,7 @@ import { initializeIcons } from '@fluentui/react'
 import { CSSProperties, useMemo, useRef } from 'react'
 
 import type { AzureChatConfig } from '@/lib/azureCommunication'
-import { renderBotOnLeft, useReadReceipts, useTypingIndicator, useWelcomeMessage } from '@/utils/azureChat'
+import { renderBotOnLeft, useBotReplies, useReadReceipts, useTypingIndicator, useWelcomeMessage } from '@/lib/azureChat'
 
 const richTextEditorEnabled = false
 
@@ -43,6 +43,7 @@ export default function AzureCommunicationApp({ config }: AzureCommunicationAppP
 
   useReadReceipts(chatAdapter, userId)
   useTypingIndicator(chatAdapter)
+  useBotReplies(chatAdapter)
   useWelcomeMessage(chatAdapter, welcomedRef)
 
   if (!threadId) {
