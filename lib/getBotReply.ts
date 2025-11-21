@@ -22,7 +22,8 @@ export async function getBotReply(message: string) {
     throw new Error(`Bot reply request failed with status ${response.status}`)
   }
 
-  const data = (await response.json().catch(() => null)) as { response?: string } | null
-  const reply = typeof data?.response === 'string' ? data.response : ''
+  const payload = await response.json().catch(() => null)
+  const normalized = Array.isArray(payload) ? payload[0] : payload
+  const reply = typeof normalized?.response === 'string' ? normalized.response : ''
   return reply
 }

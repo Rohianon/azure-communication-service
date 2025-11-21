@@ -16,8 +16,6 @@ export default async function Home() {
     return <div style={{ padding: '2rem' }}>Failed to initialize chat: {errorMessage}</div>
   }
 
-  console.log(chatConfig)
-
   return (
     <div style={{ fontFamily: 'sans-serif' }}>
       <main>
