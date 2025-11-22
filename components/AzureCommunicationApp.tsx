@@ -1,14 +1,14 @@
 "use client"
 
-import { AzureCommunicationTokenCredential } from '@azure/communication-common'
-import { ChatComposite, fromFlatCommunicationIdentifier, useAzureCommunicationChatAdapter } from '@azure/communication-react'
+import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+
+import { AzureCommunicationTokenCredential, CommunicationUserIdentifier } from '@azure/communication-common'
+import { ChatComposite, CompositeLocale, fromFlatCommunicationIdentifier, useAzureCommunicationChatAdapter } from '@azure/communication-react'
 import { initializeIcons } from '@fluentui/react'
-import { CSSProperties, useMemo, useRef } from 'react'
+import { PartialTheme, Theme } from '@fluentui/react'
 
 import type { AzureChatConfig } from '@/lib/azureCommunication'
 import { renderBotOnLeft, useBotReplies, useReadReceipts, useTypingIndicator, useWelcomeMessage } from '@/lib/azureChat'
-
-const richTextEditorEnabled = false
 
 initializeIcons()
 
@@ -16,37 +16,60 @@ type AzureCommunicationAppProps = {
   config: AzureChatConfig
 }
 
-export default function AzureCommunicationApp({ config }: AzureCommunicationAppProps): JSX.Element {
-  const { endpointUrl, userId, token, displayName, threadId } = config
+type ContainerProps = {
+  fluentTheme?: PartialTheme | Theme
+  rtl?: boolean
+  errorBar?: boolean
+  participants?: boolean
+  topic?: boolean
+  locale?: CompositeLocale
+  formFactor?: 'desktop' | 'mobile'
+  richTextEditor?: boolean
+}
+
+type Props = AzureCommunicationAppProps & ContainerProps
+
+export default function AzureCommunicationApp({ config, ...uiProps }: Props): JSX.Element {
   const welcomedRef = useRef(false)
 
   const credential = useMemo(() => {
     try {
-      return new AzureCommunicationTokenCredential(token)
+      return new AzureCommunicationTokenCredential(config.token)
     } catch {
       console.error('Failed to construct token credential')
       return undefined
     }
-  }, [token])
+  }, [config.token])
 
-  const chatAdapterArgs = useMemo(
-    () => ({
-      endpoint: endpointUrl,
-      userId: fromFlatCommunicationIdentifier(userId),
-      displayName,
-      credential,
-      threadId
-    }),
-    [endpointUrl, userId, displayName, credential, threadId]
+  const userId = useMemo(
+    () => fromFlatCommunicationIdentifier(config.userId) as CommunicationUserIdentifier,
+    [config.userId]
   )
+
+  // Add throttling for setting display name during typing
+  const [displayName, setDisplayName] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDisplayName(config.displayName)
+    }, 500)
+    return () => clearTimeout(handle)
+  }, [config.displayName])
+  
+  const chatAdapterArgs = {
+    endpoint: config.endpointUrl,
+    userId: userId,
+    displayName,
+    credential,
+    threadId: config.threadId
+  }
   const chatAdapter = useAzureCommunicationChatAdapter(chatAdapterArgs)
 
-  useReadReceipts(chatAdapter, userId)
+  useReadReceipts(chatAdapter, config.userId)
   useTypingIndicator(chatAdapter)
   useBotReplies(chatAdapter)
   useWelcomeMessage(chatAdapter, welcomedRef)
 
-  if (!threadId) {
+  if (!config.threadId) {
     return <h3>Chat thread is not configured.</h3>
   }
   if (credential === undefined) {
@@ -61,8 +84,15 @@ export default function AzureCommunicationApp({ config }: AzureCommunicationAppP
       <div style={containerStyle}>
         <ChatComposite
           adapter={chatAdapter}
-          options={{ richTextEditor: richTextEditorEnabled }}
+          rtl={uiProps.rtl ?? false}
+          fluentTheme={uiProps.fluentTheme}
+          options={{ 
+            errorBar: uiProps.errorBar,
+            participantPane: uiProps.participants,
+            topic: uiProps.topic,
+            richTextEditor: uiProps.richTextEditor }}
           onRenderMessage={renderBotOnLeft}
+          locale={uiProps.locale}
         />
       </div>
     </div>
