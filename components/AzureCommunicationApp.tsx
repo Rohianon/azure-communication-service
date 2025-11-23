@@ -9,6 +9,7 @@ import { PartialTheme, Theme } from '@fluentui/react'
 
 import type { AzureChatConfig } from '@/lib/azureCommunication'
 import { renderBotOnLeft, useBotReplies, useReadReceipts, useTypingIndicator, useWelcomeMessage } from '@/lib/azureChat'
+import { PeopleButton } from './PeopleButton'
 
 initializeIcons()
 
