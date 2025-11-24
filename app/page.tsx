@@ -1,26 +1,17 @@
-import AzureCommunicationApp from '@/components/AzureCommunicationApp'
-import { getAzureChatConfig } from '@/lib/azureCommunication'
-import type { AzureChatConfig } from '@/lib/azureCommunication'
+import ChatExperience from '@/components/chat-shell/ChatExperience'
+import { getAssistantProfile, listHumanUsers } from '@/lib/services/chatOrchestrator'
+import { serializeUser } from '@/lib/utils/serialization'
 
 export default async function Home() {
-  let chatConfig: AzureChatConfig | null = null
-  let errorMessage: string | null = null
-
-  try {
-    chatConfig = await getAzureChatConfig()
-  } catch (error) {
-    errorMessage = error instanceof Error ? error.message : 'Unable to load chat configuration.'
-  }
-
-  if (!chatConfig) {
-    return <div style={{ padding: '2rem' }}>Failed to initialize chat: {errorMessage}</div>
-  }
+  const users = await listHumanUsers()
+  const assistant = await getAssistantProfile()
 
   return (
-    <div style={{ fontFamily: 'sans-serif' }}>
-      <main>
-        <AzureCommunicationApp config={chatConfig} />
-      </main>
-    </div>
+    <main className="min-h-screen bg-slate-950 text-slate-50">
+      <ChatExperience
+        initialUsers={users.map(serializeUser)}
+        assistant={assistant}
+      />
+    </main>
   )
 }

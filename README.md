@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Azure Communication Service Workbench
 
-## Getting Started
+Modern chat workspace that showcases Azure Communication Services (ACS) chat primitives with both human-to-human threads and a first-class AI coaching assistant.
 
-First, run the development server:
+## Features
+- **MVP authentication** – full-screen modal gates access behind the three hard-coded pilot accounts (Fred, Rohi, Assumpta) with lightweight passwords saved only in local storage.
+- **Mobile-first contacts + DM UX** – AI assistant is pinned above the human directory, with swipe-friendly cards, unread badges, and a full-height ACS chat surface that mirrors Mesh.life styling.
+- **Azure Chat SDK integration** – message bubbles, typing indicators, read/delivered receipts, and attachment-ready surfaces powered by `@azure/communication-react`.
+- **Event Grid AI bridge** – user-to-AI messages are published to Azure Event Grid and responses flow back as Event Grid deliveries before being injected into ACS, keeping all telemetry accurate without custom realtime stacks.
+- **Mock database layer** – extensible in-memory repository stands in for Postgres/Mongo; all access goes through the `ChatDatabase` abstraction for easy replacement.
+- **Event-safe orchestration** – services manage identity minting, thread provisioning, token issuance, and ACS message delivery from the assistant.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Prerequisites
+- Node.js 18+
+- Bun ≥ 1.1 (`curl -fsSL https://bun.sh/install | bash`)
+- An Azure Communication Services resource with Chat enabled
+
+## Configuration
+Create `.env.local` in the project root:
+
+```env
+NEXT_ACS_CONNECTION_STRING="endpoint=https://<resource>.communication.azure.com/;accesskey=<key>"
+NEXT_EVENT_GRID_TOPIC_ENDPOINT="https://<event-grid-topic>.<region>-1.eventgrid.azure.net/api/events"
+NEXT_EVENT_GRID_TOPIC_KEY="<topic-key>"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command        | Purpose                                      |
+| -------------- | -------------------------------------------- |
+| `bun install`  | Install dependencies                         |
+| `bun dev`      | Start Next.js in dev mode with Bun           |
+| `bun run build`| Production build                             |
+| `bun run lint` | ESLint (already run during this change set)  |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> **Note:** The CLI environment used for this refactor did not have `bun` installed, so `npm run lint` was executed to validate the code instead. Once Bun is available locally, `bun dev` should behave the same as `npm run dev`.
 
-## Learn More
+## Architecture Overview
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  page.tsx              → Server component that seeds the contact list + assistant profile
+  api/                  → Minimal ACS + AI routes (chat config, threads, AI events, Event Grid receiver)
+components/chat-shell/  → Client layout (auth modal, contacts, recents, ACS workspace)
+lib/
+  constants/            → Hard-coded pilot profiles (names, passwords, colors)
+  db/                   → ChatDatabase interface + in-memory implementation
+  hooks/                → Adapter instrumentation (read receipts, AI bridge trigger)
+  services/             → ACS orchestration, Event Grid publisher, environment helpers
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Data Layer
+- `ChatDatabase` defines the contract for listing users, threads, and persisting metadata.
+- `InMemoryChatDatabase` seeds a few sample personas and keeps participant-indexed thread lookups.
+- Swap in a real repository by implementing the same interface and replacing the provider.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### ACS + Event Layer
+- `chatOrchestrator.ts` mints Communication identities, issues tokens, creates threads, and delivers assistant responses through the server-side `ChatClient`.
+- `aiEventBridge.ts` publishes user→AI messages to Event Grid so downstream processors can call LLMs and emit AI response events.
+- `azureEnvironment.ts` centralizes ACS + Event Grid configuration so credentials are fetched once per runtime.
 
-## Deploy on Vercel
+### Client Experience
+- `ChatExperience` handles the MVP login modal, contact directory, AI pin, recents list, and bootstraps ACS adapters once the user selects a thread.
+- `ConversationSurface` wraps `ChatComposite`, forces a mobile form factor on small screens, and wires hooks for read receipts + AI bridge publishing.
+- `AuthModal`, `ContactList`, and `ThreadList` live in the same module to keep the Mesh.life-inspired layout co-located with state management.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development Tips
+- Ensure `NEXT_ACS_CONNECTION_STRING` is scoped to a resource with Chat privileges; each page load provisions ephemeral identities for the personas.
+- Configure `NEXT_EVENT_GRID_TOPIC_ENDPOINT` and `NEXT_EVENT_GRID_TOPIC_KEY` so `/api/ai/messages` can publish user prompts to Event Grid. The `/api/ai/respond` route handles the Event Grid subscription handshake and should be the endpoint target for AI response events.
+- The in-memory DB resets on server restart. Replace it with a persistent store by implementing the `ChatDatabase` interface.
+- Observe server logs for AI response flow; only Event Grid is used for AI messaging (no websockets/SSE), and ACS delivers both human + AI traffic to the UI for accurate receipts.
