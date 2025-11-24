@@ -16,6 +16,7 @@ type SerializableUser = {
   displayName: string
   role: 'human' | 'assistant'
   accentColor: string
+  externalId?: string
   presence: PresenceStatus
   createdAt: string
   lastSeenAt: string
@@ -371,7 +372,13 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
         <div className="flex min-h-[75vh] flex-1 flex-col gap-4 rounded-3xl bg-slate-950/50 p-4 shadow-2xl ring-1 ring-slate-900/40 sm:p-6">
           {error ? <div className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
           {activeThread && chatConfig && activeUserId ? (
-            <ConversationSurface config={chatConfig} threadId={activeThread.id} mode={activeThread.mode} userId={activeUserId} />
+            <ConversationSurface
+              config={chatConfig}
+              threadId={activeThread.id}
+              mode={activeThread.mode}
+              userId={activeUserId}
+              phoneNumber={activeUserProfile?.externalId ?? null}
+            />
           ) : (
             <EmptyState loggedIn={Boolean(activeUserId)} loading={loadingThreads || loadingConfig} />
           )}

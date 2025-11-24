@@ -17,9 +17,10 @@ type Props = {
   threadId: string
   mode: ChatThreadMode
   userId: string
+  phoneNumber?: string | null
 }
 
-export default function ConversationSurface({ config, threadId, mode, userId }: Props) {
+export default function ConversationSurface({ config, threadId, mode, userId, phoneNumber }: Props) {
   const credential = useMemo(() => new AzureCommunicationTokenCredential(config.token), [config.token])
 
   const adapterArgs = useMemo(
@@ -36,7 +37,13 @@ export default function ConversationSurface({ config, threadId, mode, userId }: 
   const adapter = useAzureCommunicationChatAdapter(adapterArgs)
 
   useAutoReadReceipts(adapter, config.userId)
-  useAiResponderBridge(adapter, { threadId, threadMode: mode, currentUserAcsId: config.userId, currentUserId: userId })
+  useAiResponderBridge(adapter, {
+    threadId,
+    threadMode: mode,
+    currentUserAcsId: config.userId,
+    currentUserId: userId,
+    currentUserPhoneNumber: phoneNumber ?? null
+  })
 
   const [formFactor, setFormFactor] = useState<'mobile' | 'desktop'>(() =>
     typeof window === 'undefined' ? 'desktop' : window.innerWidth < 768 ? 'mobile' : 'desktop'

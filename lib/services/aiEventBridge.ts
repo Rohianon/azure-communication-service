@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 
 import { AzureKeyCredential } from '@azure/core-auth'
-import { EventGridEvent, EventGridPublisherClient } from '@azure/eventgrid'
+import { EventGridPublisherClient } from '@azure/eventgrid'
 
 import { getEventGridTopicEndpoint, getEventGridTopicKey } from '@/lib/services/azureEnvironment'
 
@@ -11,14 +11,16 @@ export const AI_ASSISTANT_RESPONSE_EVENT = 'Mesh.AiChat.AssistantResponse'
 type UserMessagePayload = {
   senderUserId: string
   messageText: string
+  phoneNumber?: string
 }
 
-let publisher: EventGridPublisherClient<EventGridEvent<UserMessagePayload>> | null = null
+let publisher: EventGridPublisherClient<'EventGrid'> | null = null
 
-function getPublisher(): EventGridPublisherClient<EventGridEvent<UserMessagePayload>> {
+function getPublisher(): EventGridPublisherClient<'EventGrid'> {
   if (!publisher) {
-    publisher = new EventGridPublisherClient<EventGridEvent<UserMessagePayload>>(
+    publisher = new EventGridPublisherClient(
       getEventGridTopicEndpoint(),
+      'EventGrid',
       new AzureKeyCredential(getEventGridTopicKey())
     )
   }

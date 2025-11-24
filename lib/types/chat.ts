@@ -8,6 +8,7 @@ export interface ChatUser {
   role: UserRole
   accentColor: string
   acsIdentity?: string
+  externalId?: string
   presence: PresenceStatus
   createdAt: Date
   lastSeenAt: Date

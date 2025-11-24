@@ -10,6 +10,7 @@ type AiBridgeOptions = {
   threadMode: 'user' | 'ai' | null
   currentUserAcsId: string | null
   currentUserId: string | null
+  currentUserPhoneNumber: string | null
 }
 
 export function useAutoReadReceipts(adapter: Adapter | undefined, currentUserAcsId: string | null) {
@@ -33,7 +34,10 @@ export function useAutoReadReceipts(adapter: Adapter | undefined, currentUserAcs
   }, [adapter, currentUserAcsId])
 }
 
-export function useAiResponderBridge(adapter: Adapter | undefined, { threadId, threadMode, currentUserAcsId, currentUserId }: AiBridgeOptions) {
+export function useAiResponderBridge(
+  adapter: Adapter | undefined,
+  { threadId, threadMode, currentUserAcsId, currentUserId, currentUserPhoneNumber }: AiBridgeOptions
+) {
   const pendingRequests = useRef(new Set<string>())
 
   useEffect(() => {
@@ -59,7 +63,11 @@ export function useAiResponderBridge(adapter: Adapter | undefined, { threadId, t
       fetch('/api/ai/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderUserId: currentUserId, messageText: trimmed })
+        body: JSON.stringify({
+          senderUserId: currentUserId,
+          phoneNumber: currentUserPhoneNumber ?? undefined,
+          messageText: trimmed
+        })
       }).catch((error) => {
         console.error('Failed to send AI response trigger', error)
       })
@@ -70,5 +78,5 @@ export function useAiResponderBridge(adapter: Adapter | undefined, { threadId, t
       adapter.off('messageSent', handler)
       trackedRequests.clear()
     }
-  }, [adapter, threadId, threadMode, currentUserAcsId, currentUserId])
+  }, [adapter, threadId, threadMode, currentUserAcsId, currentUserId, currentUserPhoneNumber])
 }

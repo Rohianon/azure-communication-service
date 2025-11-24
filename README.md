@@ -3,7 +3,7 @@
 Modern chat workspace that showcases Azure Communication Services (ACS) chat primitives with both human-to-human threads and a first-class AI coaching assistant.
 
 ## Features
-- **MVP authentication** – full-screen modal gates access behind the three hard-coded pilot accounts (Fred, Rohi, Assumpta) with lightweight passwords saved only in local storage.
+- **Profile picker auth** – a full-screen modal lets you jump in as Fredrick, Rohi, Assumpta, or Guest with a single tap (no passwords) and persists your choice in local storage.
 - **Mobile-first contacts + DM UX** – AI assistant is pinned above the human directory, with swipe-friendly cards, unread badges, and a full-height ACS chat surface that mirrors Mesh.life styling.
 - **Azure Chat SDK integration** – message bubbles, typing indicators, read/delivered receipts, and attachment-ready surfaces powered by `@azure/communication-react`.
 - **Event Grid AI bridge** – user-to-AI messages are published to Azure Event Grid and responses flow back as Event Grid deliveries before being injected into ACS, keeping all telemetry accurate without custom realtime stacks.
@@ -23,6 +23,32 @@ NEXT_ACS_CONNECTION_STRING="endpoint=https://<resource>.communication.azure.com/
 NEXT_EVENT_GRID_TOPIC_ENDPOINT="https://<event-grid-topic>.<region>-1.eventgrid.azure.net/api/events"
 NEXT_EVENT_GRID_TOPIC_KEY="<topic-key>"
 ```
+
+### AI Event Payloads
+When a human sends a message inside the ACS UI, `/api/ai/messages` publishes a `Mesh.AiChat.UserMessage` event to Event Grid with the following shape:
+
+```json
+{
+  "eventType": "Mesh.AiChat.UserMessage",
+  "dataVersion": "1.0",
+  "data": {
+    "senderUserId": "fredrick",
+    "phoneNumber": "254743039297",
+    "messageText": "Hey coach, can we review my savings plan?"
+  }
+}
+```
+
+The `phoneNumber` is the WhatsApp-style identifier your existing backend expects. Current mappings are:
+
+| Profile          | Phone number   |
+| ---------------- | -------------- |
+| Fredrick Maina   | `254743039297` |
+| Assumpta Wanmyama| `254736815546` |
+| Rohi Ogula       | `254799031228` |
+| Guest            | _(not sent)_   |
+
+Your backend can subscribe to the Event Grid topic (`mesh-ai-chat-topic`) and reuse the same event-handling pipeline that currently powers your WhatsApp webhook.
 
 ## Scripts
 

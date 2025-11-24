@@ -5,6 +5,7 @@ import { publishAiUserMessageEvent } from '@/lib/services/aiEventBridge'
 type Payload = {
   senderUserId: string
   messageText: string
+  phoneNumber?: string
 }
 
 export async function POST(request: Request) {
@@ -16,7 +17,8 @@ export async function POST(request: Request) {
   try {
     await publishAiUserMessageEvent({
       senderUserId: body.senderUserId,
-      messageText: body.messageText
+      messageText: body.messageText,
+      phoneNumber: body.phoneNumber
     })
     return NextResponse.json({ ok: true })
   } catch (error) {
