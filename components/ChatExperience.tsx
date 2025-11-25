@@ -363,13 +363,7 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
           focusedContactId={focusedContactId}
           contactsDisabled={!activeUserId || loadingThreads}
           loadingThreads={loadingThreads}
-          threads={threads}
-          selectedThreadId={selectedThreadId}
           onContactPress={handleContactPress}
-          onThreadSelect={(threadId) => {
-            handleThreadSelection(threadId)
-            closeSidebarOnMobile()
-          }}
           onSignOut={handleSignOut}
           onCloseMobile={closeSidebarOnMobile}
         />
