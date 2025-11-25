@@ -34,12 +34,10 @@ export default function ConversationSurface({ config, threadId, mode, userId, ph
     [config, credential]
   )
 
-  // const adapter = useAzureCommunicationChatAdapter(adapterArgs)
   const adapter = useAzureCommunicationChatAdapter({
-  ...adapterArgs,
-  // Force TypeScript to treat this as a User Identifier
-  userId: adapterArgs.userId as CommunicationUserIdentifier
-})
+    ...adapterArgs,
+    userId: adapterArgs.userId as CommunicationUserIdentifier
+  })
 
   useAutoReadReceipts(adapter, config.userId)
   useAiResponderBridge(adapter, {
@@ -68,17 +66,21 @@ export default function ConversationSurface({ config, threadId, mode, userId, ph
   }
 
   return (
-    <FluentThemeProvider>
-        <ChatComposite
-          adapter={adapter}
-          formFactor={formFactor}
-          options={{
-            autoFocus: 'sendBoxTextField',
-            participantPane: false,
-            topic: true,
-            richTextEditor: false
-          }}
-        />
-    </FluentThemeProvider>
+    <div className="h-[90vh] w-full overflow-hidden rounded-xl border border-slate-800 bg-white shadow-sm">
+      <FluentThemeProvider>
+        <div className="h-full w-full flex flex-col">
+            <ChatComposite
+            adapter={adapter}
+            formFactor={formFactor}
+            options={{
+                autoFocus: 'sendBoxTextField',
+                participantPane: false,
+                topic: true,
+                richTextEditor: false
+            }}
+            />
+        </div>
+      </FluentThemeProvider>
+    </div>
   )
 }

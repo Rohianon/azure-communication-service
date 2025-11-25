@@ -43,5 +43,6 @@ export const AI_ASSISTANT_USER = {
   displayName: 'Coach MESH',
   role: 'assistant' as const,
   accentColor: '#E879F9',
+  acsIdentity: '8:acs:a46d38be-853b-45c8-a689-46e0cf9713e4_0000002b-5528-cc4c-2ea5-f4bd4560a05a',
   presence: 'online' as PresenceStatus
 }
