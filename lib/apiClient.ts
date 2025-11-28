@@ -103,3 +103,17 @@ export function triggerAiResponder(payload: AiResponderPayload) {
     errorMessage: 'Failed to send AI response trigger'
   })
 }
+
+export type AiTypingIndicatorPayload = {
+  receiverUserId: string
+  threadId?: string
+}
+
+export function triggerAssistantTypingIndicator(payload: AiTypingIndicatorPayload) {
+  return apiRequest<void>({
+    url: '/api/ai/typing',
+    method: 'POST',
+    data: payload,
+    errorMessage: 'Failed to notify assistant typing indicator'
+  })
+}

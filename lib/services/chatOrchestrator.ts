@@ -106,6 +106,57 @@ async function ensureThreadRecord(participantIds: string[], mode: ChatThreadMode
   return thread
 }
 
+type AssistantConversationContext = {
+  human: ChatUser
+  assistantProfile: AiAssistantProfile
+  assistantRecord: ChatUser
+  thread: ChatThread
+}
+
+async function ensureAssistantConversation(userId: string, threadId?: string): Promise<AssistantConversationContext> {
+  const db = getDatabase()
+  const human = await db.getUser(userId)
+  if (!human) {
+    throw new Error('User not found')
+  }
+
+  const assistantProfile = await getAssistantProfile()
+  const assistantRecord = await db.getUser(assistantProfile.id)
+  if (!assistantRecord) {
+    throw new Error('Assistant user is missing from the database')
+  }
+
+  let thread: ChatThread | null = null
+  if (threadId) {
+    const existing = await db.getThread(threadId)
+    if (
+      existing &&
+      existing.participantIds.includes(userId) &&
+      existing.participantIds.includes(assistantProfile.id) &&
+      existing.mode === 'ai'
+    ) {
+      thread = existing
+    }
+  }
+
+  if (!thread) {
+    thread =
+      (await db.getThreadByParticipants([userId, assistantProfile.id])) ??
+      (await ensureThreadRecord(
+        [userId, assistantProfile.id],
+        'ai',
+        `${assistantProfile.displayName} with ${human.displayName.split(' ')[0]}`
+      ))
+  }
+
+  return {
+    human,
+    assistantProfile,
+    assistantRecord,
+    thread
+  }
+}
+
 export async function listHumanUsers() {
   const users = await getDatabase().listHumanUsers()
   return users.sort((a, b) => a.displayName.localeCompare(b.displayName))
@@ -199,29 +250,10 @@ export async function deliverAssistantResponse(userId: string, messageText: stri
     return
   }
 
-  const db = getDatabase()
-  const human = await db.getUser(userId)
-  if (!human) {
-    throw new Error('User not found')
-  }
-
-  const assistantProfile = await getAssistantProfile()
-  const assistantRecord = await db.getUser(assistantProfile.id)
-  if (!assistantRecord) {
-    throw new Error('Assistant user is missing from the database')
-  }
-
-  const currentThread =
-    (await db.getThreadByParticipants([userId, assistantProfile.id])) ??
-    (await ensureThreadRecord(
-      [userId, assistantProfile.id],
-      'ai',
-      `${assistantProfile.displayName} with ${human.displayName.split(' ')[0]}`
-    ))
-
+  const { assistantRecord, thread } = await ensureAssistantConversation(userId)
   const token = await issueToken(assistantRecord)
   const client = createChatClient(token)
-  const threadClient = client.getChatThreadClient(currentThread.acsThreadId)
+  const threadClient = client.getChatThreadClient(thread.acsThreadId)
 
   await threadClient.sendTypingNotification().catch(() => undefined)
 
@@ -234,10 +266,17 @@ export async function deliverAssistantResponse(userId: string, messageText: stri
     }
   )
 
-  const updatedThread: ChatThread = {
-    ...currentThread,
+  await getDatabase().saveThread({
+    ...thread,
     lastActivityAt: new Date(),
     lastMessagePreview: trimmed.slice(0, 120)
-  }
-  await db.saveThread(updatedThread)
+  })
+}
+
+export async function sendAssistantTypingIndicator(userId: string, threadId?: string): Promise<void> {
+  const { assistantRecord, thread } = await ensureAssistantConversation(userId, threadId)
+  const token = await issueToken(assistantRecord)
+  const client = createChatClient(token)
+  const threadClient = client.getChatThreadClient(thread.acsThreadId)
+  await threadClient.sendTypingNotification()
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import type { ChatAdapter, MessageSentListener } from '@azure/communication-react'
 import { getIdentifierRawId } from '@azure/communication-common'
 
-import { triggerAiResponder } from '@/lib/apiClient'
+import { triggerAiResponder, triggerAssistantTypingIndicator } from '@/lib/apiClient'
 
 type MessageSentEvent = Parameters<MessageSentListener>[0]
 
@@ -65,6 +65,13 @@ export function useAiResponderBridge(
       const trimmed = text.trim()
       if (!trimmed) return
       trackedRequests.add(message.id)
+
+      triggerAssistantTypingIndicator({
+        receiverUserId: currentUserId,
+        threadId
+      }).catch((error) => {
+        console.error('Failed to send assistant typing indicator trigger', error)
+      })
 
       triggerAiResponder({
         senderUserId: currentUserId,
