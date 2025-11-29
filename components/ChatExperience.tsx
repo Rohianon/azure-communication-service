@@ -326,7 +326,7 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
           onSignOut={handleSignOut}
           onCloseMobile={closeSidebarOnMobile}
         />
-        <div className="flex min-h-100vh flex-1 flex-col overflow-hidden rounded-2xl bg-slate-950/50 p-4 shadow-2xl ring-1 ring-slate-900/40 sm:p-6">
+        <div className="flex min-h-100vh flex-1 flex-col overflow-hidden rounded-2xl bg-slate-950/50 shadow-2xl ring-1 ring-slate-900/40">
           {error ? <div className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
           <div className="flex flex-1 min-h-0">
             {activeThread && chatConfig && activeUserId ? (
