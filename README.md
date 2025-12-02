@@ -90,6 +90,37 @@ lib/
 - `ConversationSurface` wraps `ChatComposite`, forces a mobile form factor on small screens, and wires hooks for read receipts + AI bridge publishing.
 - `SidebarPanel` renders the floating contacts + recents drawer, and `AuthModal` hosts the persona picker / login modal.
 
+## Adaptive Cards
+- Frontend adapter now sets `enableAdaptiveCards: true` so Bot Framework style cards render when the payload carries adaptive card metadata.
+- Adaptive cards must arrive with metadata `microsoft.azure.communication.chat.bot.contenttype: azurebotservice.adaptivecard` and the message content set to the raw JSON card.
+- Button card format (`lib/constants/adaptiveCards.ts` `buildButtonCard`):
+```json
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.6",
+  "body": [{ "type": "TextBlock", "text": "Pick an option", "wrap": true }],
+  "actions": [
+    { "type": "Action.Submit", "title": "Check balance", "data": { "action": "CHECK_BALANCE" } },
+    { "type": "Action.Submit", "title": "Schedule payment", "data": { "action": "SCHEDULE_PAYMENT" } }
+  ]
+}
+```
+- Open URL card format (`lib/constants/adaptiveCards.ts` `buildOpenUrlCard`):
+```json
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.6",
+  "body": [{ "type": "TextBlock", "text": "Jump to a resource", "wrap": true }],
+  "actions": [
+    { "type": "Action.OpenUrl", "title": "View statement", "url": "https://contoso.com/statements/123" },
+    { "type": "Action.OpenUrl", "title": "Contact support", "url": "https://contoso.com/support" }
+  ]
+}
+```
+- When pushing an adaptive card through Event Grid, set `adaptiveCard` to the JSON above in the event body and omit `messageText` if no plain text is needed.
+
 ## Development Tips
 - Ensure `NEXT_ACS_CONNECTION_STRING` is scoped to a resource with Chat privileges; each page load provisions ephemeral identities for the personas.
 - Configure `NEXT_EVENT_GRID_TOPIC_ENDPOINT` and `NEXT_EVENT_GRID_TOPIC_KEY` so `/api/ai/messages` can publish user prompts to Event Grid. The `/api/ai/respond` route handles the Event Grid subscription handshake and should be the endpoint target for AI response events.
