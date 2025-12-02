@@ -10,22 +10,27 @@
     "mint:acs-identities": "ts-node -P tsconfig.scripts.json scripts/mint-acs-identities.ts"
   },
   "dependencies": {
-    "@azure/eventgrid": "^5.5.0",
     "@azure/communication-chat": "^1.6.0-beta.7",
     "@azure/communication-common": "^2.4.0",
     "@azure/communication-identity": "^1.3.1",
     "@azure/communication-react": "^1.32.0-beta.1",
+    "@azure/eventgrid": "^5.5.0",
     "axios": "^1.7.9",
     "dotenv": "^17.2.3",
     "next": "16.0.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "tailwindcss": "^4",
