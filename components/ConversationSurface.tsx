@@ -89,7 +89,22 @@ export default function ConversationSurface({
     const chatMessage = message as typeof message & { metadata?: Record<string, string> }
     const metadata = chatMessage.metadata ?? {}
     const botContentType = metadata['microsoft.azure.communication.chat.bot.contenttype']
-    const isAdaptiveCard = typeof botContentType === 'string' && botContentType === 'azurebotservice.adaptivecard'
+
+    let isAdaptiveCard = typeof botContentType === 'string' && botContentType === 'azurebotservice.adaptivecard'
+    if (!isAdaptiveCard && typeof message.content === 'string') {
+      try {
+        const parsed = JSON.parse(message.content) as {
+          attachments?: Array<{ contentType?: string }>
+        }
+        if (Array.isArray(parsed.attachments)) {
+          isAdaptiveCard = parsed.attachments.some(
+            attachment => attachment?.contentType === 'application/vnd.microsoft.card.adaptive'
+          )
+        }
+      } catch {
+        // ignore invalid JSON payloads
+      }
+    }
 
     if (isAdaptiveCard) {
       return defaultOnRender(messageProps)
