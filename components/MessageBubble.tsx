@@ -9,23 +9,17 @@ type MessageBubbleProps = PropsWithChildren<{
 
 export default function MessageBubble({ timestamp, isOwn, children }: MessageBubbleProps) {
   return (
-    <div className={`flex w-full flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+    <div className={`flex w-full ${isOwn ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`
-          relative px-4 py-2.5 text-sm leading-relaxed shadow-sm max-w-[90%] text-white
-          ${isOwn
-            ? 'bg-red-500 rounded-2xl rounded-br-none'
-            : 'bg-violet-600 rounded-2xl rounded-bl-none'
-          }
+          relative max-w-[90%] rounded-2xl px-2.5 py-2.5 text-sm leading-relaxed text-white shadow-sm
+          ${isOwn ? 'bg-red-500 rounded-br-none' : 'bg-violet-600 rounded-bl-none'}
         `}
       >
-        <div className="mesh-message-content">
-          {children}
-        </div>
-      </div>
-
-      <div className={`mt-1 text-[10px] font-medium text-slate-500 ${isOwn ? 'text-right' : 'text-left'}`}>
-        {timestamp}
+        <div className="mesh-message-content">{children}</div>
+        {timestamp ? (
+          <div className="text-[11px] font-medium text-white/80 text-right">{timestamp}</div>
+        ) : null}
       </div>
     </div>
   )

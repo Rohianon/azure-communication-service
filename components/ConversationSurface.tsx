@@ -258,6 +258,13 @@ export default function ConversationSurface({ config, threadId, mode, userId, ph
             richTextEditor: false
           }}
         />
+        <style jsx global>{`
+          /* Tighten vertical rhythm between messages without using margins */
+          .acs-shell [role='listitem'] {
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+          }
+        `}</style>
       </FluentThemeProvider>
     </div>
   )
