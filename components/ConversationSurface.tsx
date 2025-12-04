@@ -4,17 +4,13 @@ import {
   ChatComposite,
   FluentThemeProvider,
   fromFlatCommunicationIdentifier,
-  type ChatAdapterState,
+  type CommunicationParticipant,
   type MessageProps,
   type MessageRenderer
 } from '@azure/communication-react'
 import type { ChatMessage } from '@azure/communication-chat'
-import {
-  AzureCommunicationTokenCredential,
-  CommunicationUserIdentifier,
-  getIdentifierRawId
-} from '@azure/communication-common'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AzureCommunicationTokenCredential, CommunicationUserIdentifier } from '@azure/communication-common'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
   ADAPTIVE_CARD_METADATA_KEY,
@@ -204,66 +200,37 @@ export default function ConversationSurface({ config, threadId, mode, userId, ph
     [assistantAcsId]
   )
 
-  const [assistantTyping, setAssistantTyping] = useState(false)
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (mode !== 'ai') {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-        typingTimeoutRef.current = null
-      }
-      setAssistantTyping(false)
-      return
-    }
-    if (!adapter) return
-
-    const handleTypingStateChange = (state: ChatAdapterState) => {
-      const typingIndicators = state.thread?.typingIndicators ?? []
-
-      const assistantIsTyping = typingIndicators.some((indicator) => {
-        if (!indicator?.sender) return false
-        const senderRawId = getIdentifierRawId(indicator.sender as CommunicationUserIdentifier)
-        if (!senderRawId || senderRawId === config.userId) return false
-        if (assistantAcsId && senderRawId !== assistantAcsId) return false
+  const renderTypingIndicator = useCallback(
+    (typingUsers: CommunicationParticipant[]) => {
+      const relevantUsers = typingUsers.filter((user) => {
+        if (!user?.userId) return false
+        if (user.userId === config.userId) return false
+        if (assistantAcsId && user.userId !== assistantAcsId) return false
         return true
       })
+      if (!relevantUsers.length || mode !== 'ai') return null
 
-      if (!assistantIsTyping) {
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current)
-          typingTimeoutRef.current = null
-        }
-        setAssistantTyping(false)
-        return
-      }
-
-      setAssistantTyping(true)
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-      typingTimeoutRef.current = setTimeout(() => setAssistantTyping(false), 3500)
-    }
-
-    const handleMessage = (event: { message: ChatMessage }) => {
-      if (!event?.message) return
-      const senderRawId = event.message.sender
-        ? getIdentifierRawId(event.message.sender as CommunicationUserIdentifier)
-        : null
-      if (!senderRawId || senderRawId === config.userId) return
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-        typingTimeoutRef.current = null
-      }
-      setAssistantTyping(false)
-    }
-
-    adapter.onStateChange(handleTypingStateChange)
-    handleTypingStateChange(adapter.getState())
-    adapter.on('messageReceived', handleMessage)
-    return () => {
-      adapter.offStateChange(handleTypingStateChange)
-      adapter.off('messageReceived', handleMessage)
-    }
-  }, [adapter, assistantAcsId, config.userId, mode])
+      return (
+        <div className="flex items-end gap-3 px-4 pb-3 pt-1 md:px-6">
+          <div className="h-10 w-10 overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200">
+            <img src="/mesh.png" alt="Coach avatar" className="h-full w-full object-cover" />
+          </div>
+          <MessageBubble isOwn={false}>
+            <div className="flex items-center gap-1 text-white">
+              {[0, 1, 2].map((dot) => (
+                <span
+                  key={dot}
+                  className="h-1.5 w-1.5 rounded-full bg-white/85 animate-bounce"
+                  style={{ animationDelay: `${dot * 0.16}s` }}
+                />
+              ))}
+            </div>
+          </MessageBubble>
+        </div>
+      )
+    },
+    [assistantAcsId, config.userId, mode]
+  )
 
   if (!adapter) {
     return (
@@ -283,6 +250,7 @@ export default function ConversationSurface({ config, threadId, mode, userId, ph
           formFactor={formFactor}
           onRenderMessage={renderMessage}
           onFetchAvatarPersonaData={fetchAvatarPersonaData}
+          onRenderTypingIndicator={renderTypingIndicator}
           options={{
             autoFocus: 'sendBoxTextField',
             participantPane: false,
@@ -291,24 +259,6 @@ export default function ConversationSurface({ config, threadId, mode, userId, ph
           }}
         />
       </FluentThemeProvider>
-
-      {assistantTyping && mode === 'ai' ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex justify-start px-4">
-          <div className="pointer-events-auto">
-            <MessageBubble isOwn={false}>
-              <div className="flex items-center gap-1.5 text-white">
-                {[0, 1, 2].map((dot) => (
-                  <span
-                    key={dot}
-                    className="h-2 w-2 rounded-full bg-white/80 animate-bounce"
-                    style={{ animationDelay: `${dot * 0.15}s` }}
-                  />
-                ))}
-              </div>
-            </MessageBubble>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
