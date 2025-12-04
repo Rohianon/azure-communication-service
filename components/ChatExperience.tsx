@@ -1,10 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 
 import { HARD_CODED_USERS } from '@/lib/constants/users'
 import { type AiAssistantProfile, type AzureChatCredentials, type SerializableThread, type SerializableUser } from '@/lib/types/chat'
 import { createThread, getChatConfig, getUserThreads } from '@/lib/apiClient'
+import { initials, presenceColor } from '@/lib/utils/uiHelpers'
 
 import ConversationSurface from './ConversationSurface'
 import AuthModal from './AuthModal'
@@ -213,6 +215,7 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
       accentColor: ASSISTANT_ACCENT,
       presence: 'online',
       role: 'assistant',
+      avatarUrl: '/mesh.png',
       lastMessagePreview: aiThread?.lastMessagePreview,
       lastActivityAt: aiThread?.lastActivityAt,
       unreadCount: aiThread?.unreadCount ?? 0
@@ -310,9 +313,14 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
 
   const showAuthModal = authBootstrapped && !activeUserId
 
+  const activePeer = useMemo(() => {
+    if (!focusedContactId) return null
+    return contacts.find(c => c.id === focusedContactId)
+  }, [contacts, focusedContactId])
+
   return (
     <div className="h-screen overflow-hidden">
-      <AuthModal open={showAuthModal} onSelectUser={handleProfileSelect} /> 
+      <AuthModal open={showAuthModal} onSelectUser={handleProfileSelect} />
       <section className="relative mx-auto flex h-full max-w-6xl flex-col gap-4 overflow-hidden px-4 py-6 lg:flex-row lg:gap-6">
         <SidebarPanel
           open={sidebarOpen}
@@ -326,9 +334,29 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
           onSignOut={handleSignOut}
           onCloseMobile={closeSidebarOnMobile}
         />
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-slate-950/50 shadow-2xl ring-1 ring-slate-900/40">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/5">
           {error ? <div className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-          <div className="flex flex-1 min-h-0 overflow-hidden">
+
+          {activePeer && (
+            <div className="flex items-center gap-3 border-b border-white/5 bg-slate-900/50 px-5 py-3 backdrop-blur-md">
+              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full shadow-inner ring-1 ring-white/10">
+                {activePeer.avatarUrl ? (
+                  <Image src={activePeer.avatarUrl} alt="Peer" width={32} height={32} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[10px] font-bold" style={{ color: activePeer.accentColor }}>{initials(activePeer.displayName)}</span>
+                )}
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-white">{activePeer.displayName}</h2>
+                <p className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+                  <span className={`h-1.5 w-1.5 rounded-full ${presenceColor(activePeer.presence)}`} />
+                  {activePeer.presence}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-1 min-h-0 overflow-hidden relative">
             {activeThread && chatConfig && activeUserId ? (
               <ConversationSurface
                 config={chatConfig}
@@ -336,6 +364,7 @@ export default function ChatExperience({ initialUsers, assistant }: Props) {
                 mode={activeThread.mode}
                 userId={activeUserId}
                 phoneNumber={activeUserProfile?.externalId ?? null}
+                assistantAcsId={assistant.acsIdentity ?? null}
               />
             ) : (
               <EmptyScreen loggedIn={Boolean(activeUserId)} loading={loadingThreads || loadingConfig} />

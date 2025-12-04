@@ -1,5 +1,7 @@
-import { PresenceStatus } from "@/lib/types/chat"
-import { formatTime, initials, presenceColor } from "@/lib/utils/uiHelpers"
+import Image from 'next/image'
+
+import { PresenceStatus } from '@/lib/types/chat'
+import { formatTime, initials, presenceColor } from '@/lib/utils/uiHelpers'
 
 export type ContactListItem = {
   id: string
@@ -13,6 +15,7 @@ export type ContactListItem = {
   lastActivityAt?: string
   unreadCount?: number
   isSelf?: boolean
+  avatarUrl?: string
 }
 
 type ContactListProps = {
@@ -21,6 +24,30 @@ type ContactListProps = {
   onSelect: (contactId: string, role: 'assistant' | 'human') => void
   disabled: boolean
   loading: boolean
+}
+
+function ContactAvatar({ contact }: { contact: ContactListItem }) {
+  if (contact.avatarUrl && contact.role === 'assistant') {
+    return (
+      <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-inner">
+        <Image
+          src={contact.avatarUrl}
+          alt={`${contact.displayName} avatar`}
+          width={48}
+          height={48}
+          className="h-full w-full object-cover"
+        />
+      </span>
+    )
+  }
+  return (
+    <span
+      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-base font-semibold text-slate-950 shadow-inner"
+      style={{ background: contact.accentColor }}
+    >
+      {initials(contact.displayName)}
+    </span>
+  )
 }
 
 function ContactList({ contacts, activeContactId, onSelect, disabled, loading }: ContactListProps) {
@@ -44,12 +71,7 @@ function ContactList({ contacts, activeContactId, onSelect, disabled, loading }:
                   : 'border-white/5 bg-slate-900/40 text-slate-200 shadow-[0_8px_30px_rgba(2,8,23,0.55)] hover:border-white/10 hover:bg-slate-900/60'
               } ${contact.disabled ? 'opacity-60' : ''}`}
             >
-              <span
-                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-base font-semibold text-slate-950 shadow-inner"
-                style={{ background: contact.accentColor }}
-              >
-                {initials(contact.displayName)}
-              </span>
+              <ContactAvatar contact={contact} />
               <div className="flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-white">

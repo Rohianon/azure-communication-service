@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-@import "tailwindcss";
-
 :root {
-  --background: #040613;
-  --foreground: #f8fafc;
+  --background: #000000;
+  --foreground: #ffffff;
+  --link-color: #ffffff;
+  --link-color-hover: #f3f4f6;
 }
 
 @theme inline {
@@ -18,10 +18,17 @@
   box-sizing: border-box;
 }
 
-body {
+html,
+body,
+#__next {
   margin: 0;
-  background: radial-gradient(circle at top, #0f172a, #020617);
+  background: var(--background);
   color: var(--foreground);
+  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+}
+
+body {
   min-height: 100vh;
 }
 
@@ -32,41 +39,118 @@ body {
   flex-direction: column;
 }
 
-.chat-panel > * {
+.acs-shell {
+  background: transparent;
+  height: 100%;
   display: flex;
-  flex: 1;
-  min-height: 0;
   flex-direction: column;
+  color: var(--foreground);
 }
 
-.chat-panel > * > * {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
+
+
+.acs-shell .fui-ChatMessage__avatar,
+.acs-shell .fui-ChatMyMessage__avatar {
+  align-self: flex-end !important;
+  margin-bottom: 24px !important;
+  margin-right: 8px !important;
 }
 
-.chat-panel [role='log'] {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+.acs-shell .fui-Avatar {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 999px !important;
+  overflow: hidden;
 }
+
+
+.acs-shell .fui-ChatMyMessage__avatar {
+  display: none !important;
+}
+
+
+.acs-shell .fui-Chat {
+  padding: 1rem !important;
+  gap: 0.75rem;
+}
+
+.acs-shell .fui-ChatMessage,
+.acs-shell .fui-ChatMyMessage {
+  margin-bottom: 0.25rem !important;
+  width: 100%;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.acs-shell .fui-ChatMessage__body,
+.acs-shell .fui-ChatMyMessage__body {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: 100%;
+}
+
+
+.mesh-chat-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  color: inherit;
+}
+
+.mesh-chat-markdown p,
+.mesh-chat-markdown h1,
+.mesh-chat-markdown h2,
+.mesh-chat-markdown h3,
+.mesh-chat-markdown ul,
+.mesh-chat-markdown ol {
+  margin: 0;
+  color: inherit;
+}
+
+.mesh-chat-markdown ul,
+.mesh-chat-markdown ol {
+  padding-left: 1.25rem;
+}
+
+.mesh-chat-markdown hr {
+  border-color: rgba(255, 255, 255, 0.1);
+  margin: 0.5rem 0;
+}
+
+.mesh-chat-markdown a {
+  color: var(--link-color) !important;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+  font-weight: 700;
+  transition: color 150ms ease;
+}
+
+.mesh-chat-markdown a:hover {
+  color: var(--link-color-hover) !important;
+}
+
 
 .wave-loader {
   display: inline-flex;
   align-items: flex-end;
-  gap: 0.35rem;
-  height: 1.5rem;
+  gap: 0.25rem;
+  height: 1.25rem;
+  padding: 0 0.25rem;
 }
 
 .wave-loader__bar {
-  width: 0.35rem;
-  height: 1.3rem;
+  width: 0.25rem;
+  height: 1rem;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(59, 130, 246, 0.9));
+  background: currentColor;
   animation: waveLoader 1.2s ease-in-out infinite;
   transform-origin: center bottom;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .wave-loader__bar:nth-child(2) {
@@ -86,15 +170,13 @@ body {
 }
 
 @keyframes waveLoader {
+
   0%,
   100% {
-    transform: scaleY(0.45);
-    opacity: 0.6;
-  }
-  40% {
     transform: scaleY(0.4);
-    opacity: 0.55;
+    opacity: 0.5;
   }
+
   20% {
     transform: scaleY(1);
     opacity: 1;
