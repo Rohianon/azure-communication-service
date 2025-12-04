@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { AI_ASSISTANT_RESPONSE_EVENT } from '@/lib/services/aiEventBridge'
 import { deliverAssistantResponse } from '@/lib/services/chatOrchestrator'
+import { type AdaptiveCardContent } from '@/lib/constants/adaptiveCards'
 
 type EventGridEvent<T> = {
   id: string
@@ -18,6 +19,7 @@ type SubscriptionValidationEvent = {
 type AiResponseEventData = {
   receiverUserId?: string
   messageText?: string
+  adaptiveCard?: AdaptiveCardContent
 }
 
 export async function POST(request: Request) {
@@ -44,10 +46,10 @@ export async function POST(request: Request) {
   const results = await Promise.allSettled(
     aiEvents.map(async (event) => {
       const data = event.data as AiResponseEventData
-      if (!data?.receiverUserId || !data?.messageText) {
-        throw new Error(`Event ${event.id} missing receiverUserId or messageText`)
+      if (!data?.receiverUserId || (!data.messageText && !data.adaptiveCard)) {
+        throw new Error(`Event ${event.id} missing receiverUserId or message payload`)
       }
-      await deliverAssistantResponse(data.receiverUserId, data.messageText)
+      await deliverAssistantResponse(data.receiverUserId, data.messageText ?? null, data.adaptiveCard)
     })
   )
 
