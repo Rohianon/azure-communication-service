@@ -5,6 +5,12 @@ import { AzureCommunicationTokenCredential, CommunicationUserIdentifier } from '
 import { CommunicationIdentityClient } from '@azure/communication-identity'
 
 import { getDatabase } from '@/lib/db/provider'
+import {
+  ADAPTIVE_CARD_METADATA_KEY,
+  ADAPTIVE_CARD_METADATA_VALUE,
+  type AdaptiveCardContent,
+  adaptiveCardPreview
+} from '@/lib/constants/adaptiveCards'
 import type {
   AiAssistantProfile,
   AzureChatCredentials,
@@ -244,9 +250,15 @@ export async function getChatCredentialsForThread(userId: string, threadId: stri
   }
 }
 
-export async function deliverAssistantResponse(userId: string, messageText: string): Promise<void> {
-  const trimmed = messageText.trim()
-  if (!trimmed) {
+export async function deliverAssistantResponse(
+  userId: string,
+  messageText: string | null,
+  adaptiveCard?: AdaptiveCardContent
+): Promise<void> {
+  const trimmed = messageText?.trim() ?? ''
+  const hasAdaptiveCard = Boolean(adaptiveCard)
+
+  if (!trimmed && !hasAdaptiveCard) {
     return
   }
 
@@ -257,19 +269,28 @@ export async function deliverAssistantResponse(userId: string, messageText: stri
 
   await threadClient.sendTypingNotification().catch(() => undefined)
 
+  const metadata = hasAdaptiveCard
+    ? {
+        [ADAPTIVE_CARD_METADATA_KEY]: ADAPTIVE_CARD_METADATA_VALUE
+      }
+    : undefined
+
+  const content = hasAdaptiveCard ? JSON.stringify(adaptiveCard) : trimmed
+
   await threadClient.sendMessage(
     {
-      content: trimmed
+      content
     },
     {
-      senderDisplayName: assistantRecord.displayName
+      senderDisplayName: assistantRecord.displayName,
+      metadata
     }
   )
 
   await getDatabase().saveThread({
     ...thread,
     lastActivityAt: new Date(),
-    lastMessagePreview: trimmed.slice(0, 120)
+    lastMessagePreview: (hasAdaptiveCard ? adaptiveCardPreview(adaptiveCard!) : trimmed).slice(0, 120)
   })
 }
 
